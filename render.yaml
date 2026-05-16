@@ -1,0 +1,9 @@
+# Render 部署配置
+# https://render.com/docs/deploy
+
+buildCommand: cd backend && mvn package -DskipTests -q
+startCommand: java -jar backend/target/stock-query-backend-1.0.0.jar
+
+envVars:
+  - key: JAVA_VERSION
+    value: 17
