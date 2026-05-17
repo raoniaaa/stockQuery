@@ -6,7 +6,7 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 COPY src ./src
-RUN mvn package -DskipTests -q
+RUN mvn package spring-boot:repackage -DskipTests
 
 # =============================================
 # Stage 2: Runtime
