@@ -5,5 +5,5 @@ services:
   - type: web
     name: stock-query-frontend
     buildCommand: cd frontend && npm install && npm run build
-    startCommand: cd frontend && npx serve dist
+    startCommand: cd frontend && npx serve dist -l $PORT
     plan: free

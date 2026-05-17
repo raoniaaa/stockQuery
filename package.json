@@ -3,6 +3,6 @@
   "private": true,
   "scripts": {
     "build": "cd frontend && npm install && npm run build",
-    "start": "cd frontend && npx serve dist"
+    "start": "cd frontend && npx serve dist -l $PORT"
   }
 }
