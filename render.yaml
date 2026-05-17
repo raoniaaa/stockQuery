@@ -1,12 +1,10 @@
-# Render Blueprint - Frontend
+# Render Blueprint - Frontend Static Site
 # https://render.com/docs/blueprint-spec
 
 services:
   - type: web
     name: stock-query-frontend
-    runtime: docker
-    dockerfilePath: ./Dockerfile.frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
     plan: free
-    envVars:
-      - key: VITE_API_BASE_URL
-        value: "https://stockquery.onrender.com"
