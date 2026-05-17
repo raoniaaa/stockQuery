@@ -2,7 +2,7 @@ import axios from 'axios'
 import type { StockData, Analysis } from '../types'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'https://stockquery.onrender.com/api',
   timeout: 60000
 })
 

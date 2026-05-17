@@ -1,12 +1,12 @@
-# Render Blueprint - Docker
-# https://render.com/docs/deploy
+# Render Blueprint - Frontend
+# https://render.com/docs/blueprint-spec
 
 services:
   - type: web
-    name: stock-query-backend
+    name: stock-query-frontend
     runtime: docker
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./Dockerfile.frontend
     plan: free
     envVars:
-      - key: JAVA_VERSION
-        value: 17
+      - key: VITE_API_BASE_URL
+        value: "https://stockquery.onrender.com"
