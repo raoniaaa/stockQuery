@@ -1,13 +1,13 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 # Supabase Configuration
 supabase:
-  url: https://your-project.supabase.co
-  key: sb_secret_xxxxxxxxxxxxxxxxxxxxxxxx
+  url: ${supabase}
+  key: ${key}
 
 # LLM Configuration (智谱GLM)
 llm:
-  api-url: https://open.bigmodel.cn/api/paas/v4/chat/completions
-  api-key: your-glm-api-key-here
-  model: GLM-4.7-Flash
+  api-url: ${llm}
+  api-key: ${api-key}
+  model: ${model}
