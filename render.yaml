@@ -1,10 +1,9 @@
-# Render Blueprint - Frontend Static Site
+# Render Blueprint - Frontend
 # https://render.com/docs/blueprint-spec
 
 services:
   - type: web
     name: stock-query-frontend
-    runtime: static
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
+    runtime: docker
+    dockerfilePath: ./Dockerfile.frontend
     plan: free
