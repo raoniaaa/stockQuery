@@ -2,7 +2,7 @@
   "name": "stockQuery",
   "private": true,
   "scripts": {
-    "prestart": "cd frontend && npm install && npm run build",
+    "prestart": "cd frontend && npm install --include=dev && npm run build",
     "start": "cd frontend && npx serve dist -l $PORT"
   }
 }
