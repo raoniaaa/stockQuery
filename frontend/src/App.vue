@@ -6,7 +6,7 @@ import StockDataDisplay from './components/StockDataDisplay.vue'
 import AnalysisResult from './components/AnalysisResult.vue'
 import StockChart from './components/StockChart.vue'
 import type { StockData, Analysis, GLMAnalysisResult } from './types'
-import { getStockData, analyzeStock, getAnalyses, getAllAnalyses } from './api'
+import { getStockData, analyzeStock, getAllAnalyses } from './api'
 
 const stockData = ref<StockData[]>([])
 const analyses = ref<Analysis[]>([])

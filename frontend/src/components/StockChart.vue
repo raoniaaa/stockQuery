@@ -12,8 +12,6 @@ const props = defineProps<{
 const canvasRef = ref<HTMLCanvasElement>()
 let chartInstance: Chart | null = null
 
-const isUp = (item: StockData) => parseFloat(item.close) >= parseFloat(item.open)
-
 const createChart = () => {
   if (!canvasRef.value || props.data.length === 0) return
 
@@ -28,7 +26,6 @@ const createChart = () => {
   const closes = props.data.map(d => parseFloat(d.close))
   const highs = props.data.map(d => parseFloat(d.high))
   const lows = props.data.map(d => parseFloat(d.low))
-  const volumes = props.data.map(d => parseInt(d.volume))
 
   const firstClose = closes[0]
   const lastClose = closes[closes.length - 1]
@@ -133,7 +130,6 @@ const createChart = () => {
         x: {
           grid: {
             color: 'rgba(30, 45, 74, 0.4)',
-            drawBorder: false,
           },
           ticks: {
             color: '#4a5568',
@@ -146,7 +142,6 @@ const createChart = () => {
           position: 'right',
           grid: {
             color: 'rgba(30, 45, 74, 0.4)',
-            drawBorder: false,
           },
           ticks: {
             color: '#4a5568',
