@@ -1,0 +1,13 @@
+# Render Blueprint - Java/Spring Boot
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: stock-query-backend
+    runtime: java
+    buildCommand: mvn package -DskipTests
+    startCommand: java -jar target/stock-query-1.0.0.jar
+    plan: free
+    envVars:
+      - key: JAVA_VERSION
+        value: 17
