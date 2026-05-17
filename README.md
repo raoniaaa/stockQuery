@@ -4,6 +4,11 @@
 
 用户输入股票代码，系统自动拉取近30日K线行情数据，调用大模型进行技术面分析，输出市场情绪、风险等级、趋势判断等结构化结果，并持久化存储至云端数据库。
 
+## 线上地址
+
+- **前端**: http://124.221.126.161:8082
+- **后端 API**: http://124.221.126.161:8081/api
+
 ## 项目结构
 
 ```
@@ -209,3 +214,97 @@ npm run dev
 | `SUPABASE_URL` | Supabase 项目 URL |
 | `SUPABASE_KEY` | Supabase anon/service key |
 | `GLM_API_KEY` | 智谱 GLM API Key |
+
+---
+
+## Debug 记录：部署踩坑合集
+
+### 1. Render 部署前端 — `frontend/dist: Is a directory`
+
+**现象**：Render 日志显示 `Running 'frontend/dist'` → `bash: line 1: frontend/dist: Is a directory`
+
+**原因**：选择了 "Web" 服务类型，但 `render.yaml` 配置了 `runtime: static`，两者冲突。Render 把 `staticPublishPath` 当成了启动命令去执行。
+
+**解决**：去掉 `runtime: static`，改用 `startCommand: cd frontend && npx serve dist -l $PORT`，让 Node.js 启动静态文件服务器。
+
+---
+
+### 2. Render 只执行 `yarn install` 不构建
+
+**现象**：Build 日志显示 `Running build command 'yarn'`，没有执行 `npm run build`，`dist` 目录不存在。
+
+**原因**：Render 自动检测到 `package.json` 后直接运行 `yarn`（只装依赖），忽略了 `render.yaml` 的 `buildCommand`。
+
+**解决**：在根 `package.json` 中添加 `prestart` 脚本，确保构建在启动前执行：
+```json
+"prestart": "cd frontend && npm install --include=dev && npm run build"
+```
+
+---
+
+### 3. `vue-tsc: not found`
+
+**现象**：构建时报 `sh: 1: vue-tsc: not found`，exit code 127。
+
+**原因**：`vue-tsc` 在 `devDependencies` 中，Render 环境可能设置了 `NODE_ENV=production` 导致 `npm install` 跳过 devDependencies。
+
+**解决**：安装命令加 `--include=dev`：
+```
+npm install --include=dev
+```
+
+---
+
+### 4. Docker 环境变量名不匹配 — 启动失败
+
+**现象**：后端 Docker 容器启动后 `No open ports detected`，Spring Boot 无法启动。
+
+**原因**：`application.yml` 中用 `${SUPABASE_URL}` 等大写变量名，但 Docker `run -e` 传入的是小写变量名（如 `supabase`），Spring Boot 无法解析占位符。
+
+**解决**：统一变量名。`application.yml.example` 改为读取与 Docker 环境变量一致的小写名称：
+```yaml
+supabase:
+  url: ${supabase}
+  key: ${key}
+llm:
+  api-url: ${llm}
+  api-key: ${api-key}
+  model: ${model}
+```
+
+---
+
+### 5. 海外服务器无法访问国内金融 API
+
+**现象**：后端部署在 Render（海外），调用新浪财经 API 返回空数据，分析失败。
+
+**原因**：新浪财经、腾讯财经等国内数据接口在海外服务器无法访问（被墙或限制境外 IP）。
+
+**解决**：将后端迁移到国内服务器（腾讯云），直接使用新浪财经 API。
+
+---
+
+### 6. 股票代码重复添加前缀 — `szsh600519`
+
+**现象**：日志显示请求 `symbol=szsh600519`，API 返回空数据。
+
+**原因**：前端传入 `sh600519`（已带前缀），`convertStockCode` 方法未判断已有前缀，又加了一次 `sz`，变成 `szsh600519`。
+
+**解决**：`convertStockCode` 方法增加前缀判断：
+```java
+if (code.startsWith("sh") || code.startsWith("sz")) {
+    return code;  // 已有前缀，直接返回
+}
+```
+
+---
+
+### 7. 智谱 GLM API 认证失败
+
+**现象**：AI 分析返回 `{"error":{"code":"1000","message":"身份验证失败。"}}`
+
+**原因**：API Key 过期或输入错误。
+
+**解决**：去智谱AI开放平台重新获取有效 API Key，更新 Docker 环境变量中的 `api-key`。
+
+---
