@@ -4,7 +4,6 @@
 services:
   - type: web
     name: stock-query-frontend
-    runtime: static
     buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
+    startCommand: cd frontend && npx serve dist
     plan: free
