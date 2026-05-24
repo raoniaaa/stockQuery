@@ -9,20 +9,54 @@ export interface StockData {
 
 export interface GLMAnalysisResult {
   summary: string
-  sentiment: 'Bullish' | 'Neutral' | 'Bearish'
-  risk_level: '低' | '中' | '高'
+  sentiment: 'Bullish' | 'Neutral' | 'Bearish' | string
+  risk_level: string
   detail: string
 }
 
 export interface Analysis {
   id?: number
-  stock_code: string
-  stock_name: string
-  analysis_type: string
+  stockCode: string
+  stockName: string
+  analysisType: string
   content: string
-  model_used: string
+  modelUsed: string
   summary?: string
   sentiment?: string
+  riskLevel?: string
+  createdAt?: string
+}
+
+export interface ChatMessage {
+  id: number
+  role: 'user' | 'ai'
+  text: string
+  time: string
+  kline?: KlineData
+  analysis?: AnalysisResult
+  rawContent?: string
+  thinking?: boolean
+}
+
+export interface KlineData {
+  code: string
+  name: string
+  change: number
+  raw: StockData[]
+}
+
+export interface AnalysisResult {
+  summary?: string
+  detail?: string
+  sentiment?: string
   risk_level?: string
-  created_at?: string
+  stockCode?: string
+  stockName?: string
+}
+
+export interface MarketOverview {
+  name: string
+  current: string
+  change: string
+  changePercent: string
 }

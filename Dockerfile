@@ -1,24 +1,15 @@
-# =============================================
-# Stage 1: Build
-# =============================================
-FROM maven:3.9-eclipse-temurin-17 AS build
+# ---- build stage ----
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
+COPY .mvn/settings.xml /root/.m2/settings.xml
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 COPY src ./src
-RUN mvn package spring-boot:repackage -DskipTests
+RUN mvn package -DskipTests -B
 
-# =============================================
-# Stage 2: Runtime
-# =============================================
-FROM eclipse-temurin:17-jre-alpine
+# ---- runtime stage ----
+FROM eclipse-temurin:25-jre
 WORKDIR /app
-
 COPY --from=build /app/target/*.jar app.jar
-COPY src/main/resources/application.yml.example ./application.yml
-
-RUN apk add --no-cache curl
-
 EXPOSE 8080
-
 ENTRYPOINT ["java", "-jar", "app.jar"]

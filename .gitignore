@@ -4,11 +4,17 @@
 
 # Backend
 backend/target/
-backend/src/main/resources/application.yml
+src/main/resources/application.yml
+target/
 
 # Frontend
 frontend/node_modules/
 frontend/dist/
+
+# Dev artifacts
+dev/
+*.class
+sse_chunks.txt
 
 # Env
 .env

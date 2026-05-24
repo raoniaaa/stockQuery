@@ -1,21 +1,17 @@
 package com.stockquery.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -35,68 +31,85 @@ public class SinaStockService {
         try {
             String symbol = convertStockCode(stockCode);
             String url = String.format(
-                    "https://query1.finance.yahoo.com/v8/finance/chart/%s?range=%dd&interval=1d",
+                    "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=%s&scale=240&ma=no&datalen=%d",
                     symbol, days
             );
 
-            log.info("Fetching stock data from Yahoo: {}", url);
+            log.info("Fetching stock data from: {}", url);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
-                    .header("User-Agent", "Mozilla/5.0")
                     .header("Accept", "application/json")
-                    .timeout(Duration.ofSeconds(15))
                     .GET()
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            log.info("Yahoo status: {}, body length: {}", response.statusCode(), response.body().length());
+            log.info("Status: {}, Body length: {}", response.statusCode(), response.body().length());
 
-            if (response.statusCode() != 200 || response.body() == null || response.body().isBlank()) {
-                log.warn("Yahoo returned non-200 or empty for stock: {}", stockCode);
+            if (response.body() == null || response.body().isBlank()) {
+                log.warn("Empty response for stock: {}", stockCode);
                 return List.of();
             }
 
-            JsonNode root = objectMapper.readTree(response.body());
-            JsonNode chart = root.path("chart").path("result").get(0);
-            JsonNode timestamps = chart.path("timestamp");
-            JsonNode ohlcv = chart.path("indicators").path("quote").get(0);
-
-            JsonNode openArr = ohlcv.path("open");
-            JsonNode highArr = ohlcv.path("high");
-            JsonNode lowArr = ohlcv.path("low");
-            JsonNode closeArr = ohlcv.path("close");
-            JsonNode volumeArr = ohlcv.path("volume");
-
-            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-            List<Map<String, Object>> result = new ArrayList<>();
-
-            for (int i = 0; i < timestamps.size(); i++) {
-                if (openArr.get(i).isNull()) continue;
-
-                Map<String, Object> row = new HashMap<>();
-                long ts = timestamps.get(i).asLong();
-                row.put("day", Instant.ofEpochSecond(ts).atZone(ZoneId.systemDefault()).format(fmt));
-                row.put("open", String.valueOf(Math.round(openArr.get(i).asDouble() * 100.0) / 100.0));
-                row.put("high", String.valueOf(Math.round(highArr.get(i).asDouble() * 100.0) / 100.0));
-                row.put("low", String.valueOf(Math.round(lowArr.get(i).asDouble() * 100.0) / 100.0));
-                row.put("close", String.valueOf(Math.round(closeArr.get(i).asDouble() * 100.0) / 100.0));
-                row.put("volume", String.valueOf(volumeArr.get(i).asLong()));
-                result.add(row);
-            }
-
-            log.info("Parsed {} records from Yahoo", result.size());
+            List<Map<String, Object>> result = objectMapper.readValue(response.body(), new TypeReference<>() {});
+            log.info("Parsed {} records", result.size());
             return result;
         } catch (Exception e) {
-            log.error("Failed to fetch stock data for code: {}", stockCode, e);
+            log.error("Failed to fetch stock data from Sina for code: {}", stockCode, e);
             return List.of();
         }
     }
 
+    /**
+     * 根据关键词搜索A股股票，返回第一个匹配的代码（6位数字）
+     * 使用新浪股票搜索建议接口
+     */
+    public String searchStockCode(String keyword) {
+        try {
+            String url = "https://suggest3.sinajs.cn/suggest/type=&key=" +
+                    URLEncoder.encode(keyword, StandardCharsets.UTF_8) +
+                    "&name=suggest";
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Referer", "https://finance.sina.com.cn")
+                    .header("User-Agent", "Mozilla/5.0")
+                    .GET()
+                    .build();
+
+            // 新浪接口返回GBK编码
+            byte[] raw = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray()).body();
+            String body = new String(raw, "GBK");
+
+            // 格式: var suggest="name,market,code,symbol,...;..."
+            String data = body.substring(body.indexOf('"') + 1, body.lastIndexOf('"'));
+            for (String entry : data.split(";")) {
+                String[] f = entry.split(",");
+                // f[1]=市场类型: 11=深市A股, 12=沪市A股, 41=港股等
+                // f[2]=纯数字代码, f[4]=名称
+                if (f.length > 4) {
+                    String market = f[1];
+                    String code = f[2];
+                    // 只要深市(11)和沪市(12)的A股
+                    if ((market.equals("11") || market.equals("12")) && code.matches("[036]\\d{5}")) {
+                        log.info("Found stock: {} -> {}", keyword, code);
+                        return code;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to search stock code for: {}", keyword, e);
+        }
+        return null;
+    }
+
     private String convertStockCode(String stockCode) {
         String code = stockCode.replace(".SH", "").replace(".SZ", "");
-        if (code.startsWith("6") || code.startsWith("9")) {
-            return code + ".SS";
+        if (code.startsWith("sh") || code.startsWith("sz")) {
+            return code;
         }
-        return code + ".SZ";
+        if (code.startsWith("6") || code.startsWith("9")) {
+            return "sh" + code;
+        }
+        return "sz" + code;
     }
 }

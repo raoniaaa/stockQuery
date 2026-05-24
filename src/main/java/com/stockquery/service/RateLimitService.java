@@ -4,50 +4,59 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class RateLimitService {
 
-    private final Map<String, Long> lastRequestTime = new ConcurrentHashMap<>();
-    private final Map<String, AtomicInteger> requestCount = new ConcurrentHashMap<>();
+    private final Map<String, SlidingWindow> windows = new ConcurrentHashMap<>();
 
     private static final long WINDOW_MS = 60_000;
-    private static final int MAX_REQUESTS_PER_MINUTE = 5;
-    private static final long MIN_INTERVAL_MS = 3_000;
+    private static final int MAX_REQUESTS_PER_MINUTE = 3;
 
+    /** 按 IP 检查是否允许请求（每个 IP 每分钟 MAX_REQUESTS_PER_MINUTE 次） */
+    public boolean allowIp(String clientIp) {
+        return allowRequest("ip:" + clientIp);
+    }
+
+    /** 按 IP 获取还需等待多少毫秒 */
+    public long getIpWaitTime(String clientIp) {
+        return getWaitTime("ip:" + clientIp);
+    }
+
+    /** 通用限流检查。每个 key 独立计数，互不影响。 */
     public boolean allowRequest(String key) {
         long now = System.currentTimeMillis();
+        SlidingWindow w = windows.computeIfAbsent(key, k -> new SlidingWindow());
 
-        Long lastTime = lastRequestTime.get(key);
-        if (lastTime != null && (now - lastTime) < MIN_INTERVAL_MS) {
-            return false;
-        }
-
-        AtomicInteger count = requestCount.computeIfAbsent(key, k -> new AtomicInteger(0));
-        Long lastWindow = lastRequestTime.get(key);
-
-        if (lastWindow == null || (now - lastWindow) > WINDOW_MS) {
-            count.set(1);
-        } else {
-            if (count.get() >= MAX_REQUESTS_PER_MINUTE) {
+        synchronized (w) {
+            if ((now - w.windowStart) > WINDOW_MS) {
+                w.windowStart = now;
+                w.count = 1;
+                return true;
+            }
+            if (w.count >= MAX_REQUESTS_PER_MINUTE) {
                 return false;
             }
-            count.incrementAndGet();
+            w.count++;
+            return true;
         }
-
-        lastRequestTime.put(key, now);
-        return true;
     }
 
     public long getWaitTime(String key) {
-        Long lastTime = lastRequestTime.get(key);
-        if (lastTime == null) return 0;
+        SlidingWindow w = windows.get(key);
+        if (w == null) return 0;
 
-        long elapsed = System.currentTimeMillis() - lastTime;
-        if (elapsed < MIN_INTERVAL_MS) {
-            return MIN_INTERVAL_MS - elapsed;
+        synchronized (w) {
+            long now = System.currentTimeMillis();
+            long elapsed = now - w.windowStart;
+            if (elapsed > WINDOW_MS) return 0;
+            if (w.count < MAX_REQUESTS_PER_MINUTE) return 0;
+            return WINDOW_MS - elapsed + 1000;
         }
-        return 0;
+    }
+
+    private static class SlidingWindow {
+        long windowStart;
+        int count;
     }
 }

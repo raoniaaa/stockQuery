@@ -1,13 +1,39 @@
 server:
   port: ${PORT:8080}
 
-# Supabase Configuration
-supabase:
-  url: ${supabase}
-  key: ${key}
+spring:
+  datasource:
+    url: jdbc:postgresql://${supabase-db-host}:6543/postgres
+    username: ${supabase-db-user:postgres}
+    password: ${supabase-db-password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
 
-# LLM Configuration (智谱GLM)
-llm:
-  api-url: ${llm}
-  api-key: ${api-key}
-  model: ${model}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+langchain4j:
+  open-ai:
+    chat-model:
+      api-key: ${glm-api-key}
+      base-url: https://open.bigmodel.cn/api/paas/v4
+      model-name: GLM-4-Flash
+      temperature: 0.7
+      max-tokens: 4096
+      log-requests: true
+    streaming-chat-model:
+      api-key: ${glm-api-key}
+      base-url: https://open.bigmodel.cn/api/paas/v4
+      model-name: GLM-4-Flash
+      temperature: 0.7
+      max-tokens: 4096
+    embedding-model:
+      api-key: ${siliconflow-api-key}
+      base-url: https://api.siliconflow.cn/v1
+      model-name: BAAI/bge-m3
